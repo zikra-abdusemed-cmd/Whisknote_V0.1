@@ -56,13 +56,6 @@ export interface UserProfile {
   joinedDate: string;
 }
 
-export interface AISuggestion {
-  name: string;
-  amount: string;
-  unit: string;
-  reason: string;
-}
-
 export interface UnitConversionResult {
   convertedAmount: number;
   formattedResult: string;

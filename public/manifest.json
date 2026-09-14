@@ -2,7 +2,7 @@
   "id": "/",
   "name": "WhiskNote – Baking Notebook & Assistant",
   "short_name": "WhiskNote",
-  "description": "A cozy mobile recipe notebook, bake timer, unit converter, and AI baking assistant for home bakers.",
+  "description": "A cozy mobile recipe notebook, bake timer, and unit converter for home bakers.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

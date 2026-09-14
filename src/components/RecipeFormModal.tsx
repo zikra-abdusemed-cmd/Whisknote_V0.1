@@ -3,19 +3,16 @@ import {
   X,
   Plus,
   Trash2,
-  Sparkles,
   Upload,
   Image as ImageIcon,
   Clock,
   Flame,
   Users,
   AlertCircle,
-  Loader2,
-  Check,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { Recipe, RecipeCategory, Ingredient, InstructionStep, AISuggestion, RecipeDifficulty } from '../types';
+import { Recipe, RecipeCategory, Ingredient, InstructionStep, RecipeDifficulty } from '../types';
 
 interface RecipeFormModalProps {
   recipeToEdit?: Recipe | null;
@@ -81,13 +78,6 @@ export const RecipeFormModal: React.FC<RecipeFormModalProps> = ({
       { id: 's4', stepNumber: 4, instruction: 'Bake for 12-15 minutes until golden brown around edges.', durationMinutes: 15 },
     ]
   );
-
-  // AI Suggestion state
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
-  const [aiBakerTip, setAiBakerTip] = useState<string | null>(null);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [addedSuggestionNames, setAddedSuggestionNames] = useState<Set<string>>(new Set());
 
   // Form error
   const [formError, setFormError] = useState<string | null>(null);
@@ -177,51 +167,6 @@ export const RecipeFormModal: React.FC<RecipeFormModalProps> = ({
 
     const updated = reordered.map((step, idx) => ({ ...step, stepNumber: idx + 1 }));
     setInstructions(updated);
-  };
-
-  // AI Ingredient Suggestions
-  const handleFetchAiSuggestions = async () => {
-    setIsAiLoading(true);
-    setAiError(null);
-    try {
-      const currentList = ingredients.map(i => i.name.trim()).filter(Boolean);
-      const res = await fetch('/api/ai/suggest-ingredients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipeTitle: title || 'Untitled Bake',
-          category,
-          currentIngredients: currentList,
-        }),
-      });
-
-      const data = await res.json();
-      if (data.suggestions && Array.isArray(data.suggestions)) {
-        setAiSuggestions(data.suggestions);
-        setAiBakerTip(data.bakerTip || null);
-      } else {
-        setAiError('Could not fetch suggestions at this moment.');
-      }
-    } catch (e) {
-      console.error('Failed to get AI suggestions', e);
-      setAiError('Offline or network unavailable. Showing curated recommendations.');
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-
-  const handleAddAiSuggestion = (suggestion: AISuggestion) => {
-    setIngredients(prev => [
-      ...prev,
-      {
-        id: `ai-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
-        name: suggestion.name,
-        amount: suggestion.amount || '1',
-        unit: suggestion.unit || 'tsp',
-        notes: suggestion.reason,
-      },
-    ]);
-    setAddedSuggestionNames(prev => new Set(prev).add(suggestion.name));
   };
 
   // Form submit
@@ -484,108 +429,14 @@ export const RecipeFormModal: React.FC<RecipeFormModalProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Ingredients with AI Suggester */}
+          {/* Section 3: Ingredients */}
           <div className="space-y-3 pt-2 border-t border-[#EFE8DF]">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
               <div>
                 <h3 className="text-xs font-bold text-[#66574F] uppercase tracking-wider">Ingredients List *</h3>
                 <p className="text-[11px] text-[#8C7A70]">Specify quantity, unit, ingredient, and notes</p>
               </div>
-
-              {/* AI Suggestion Button */}
-              <button
-                type="button"
-                onClick={handleFetchAiSuggestions}
-                disabled={isAiLoading}
-                className="px-3 py-1.5 rounded-xl bg-amber-100/80 hover:bg-amber-100 text-amber-900 border border-amber-300/80 text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
-              >
-                {isAiLoading ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-700" />
-                    Analyzing dough & spices...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                    AI Ingredient Suggestions
-                  </>
-                )}
-              </button>
             </div>
-
-            {/* AI Suggestions Drawer if available */}
-            {aiSuggestions.length > 0 && (
-              <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-amber-600" /> Suggested Flavor Pairings
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setAiSuggestions([])}
-                    className="text-xs text-amber-700 hover:text-amber-900"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-
-                {aiBakerTip && (
-                  <p className="text-xs text-amber-800 bg-white/70 p-2.5 rounded-xl border border-amber-200/60 italic">
-                    💡 {aiBakerTip}
-                  </p>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {aiSuggestions.map(sugg => {
-                    const isAdded = addedSuggestionNames.has(sugg.name);
-                    return (
-                      <div
-                        key={sugg.name}
-                        className="bg-white/90 p-2.5 rounded-xl border border-amber-200/70 flex items-start justify-between gap-2"
-                      >
-                        <div>
-                          <div className="text-xs font-bold text-[#2E2520]">
-                            {sugg.amount} {sugg.unit} {sugg.name}
-                          </div>
-                          <p className="text-[11px] text-[#7A6A61] mt-0.5">{sugg.reason}</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleAddAiSuggestion(sugg)}
-                          disabled={isAdded}
-                          className={`shrink-0 px-2 py-1 rounded-lg text-xs font-bold transition-colors ${
-                            isAdded
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 cursor-default'
-                              : 'bg-[#C26343] hover:bg-[#AE5638] text-white'
-                          }`}
-                        >
-                          {isAdded ? (
-                            <span className="flex items-center gap-1">
-                              <Check className="w-3 h-3" /> Added
-                            </span>
-                          ) : (
-                            '+ Add'
-                          )}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {aiError && (
-              <div className="p-2.5 bg-amber-50 text-amber-800 text-xs rounded-xl border border-amber-200 flex items-center justify-between">
-                <span>{aiError}</span>
-                <button
-                  type="button"
-                  onClick={() => setAiError(null)}
-                  className="text-amber-900 font-bold ml-2"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
 
             {/* Ingredients table inputs */}
             <div className="space-y-2">

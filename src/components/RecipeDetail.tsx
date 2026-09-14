@@ -12,10 +12,6 @@ import {
   Circle,
   Timer,
   Sparkles,
-  HelpCircle,
-  MessageSquare,
-  Send,
-  Loader2,
   Scale,
   Minus,
   Plus,
@@ -57,12 +53,6 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
   // Completed instruction steps
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
 
-  // AI Baking troubleshooting assistant
-  const [showAiAssistant, setShowAiAssistant] = useState<boolean>(false);
-  const [aiQuestion, setAiQuestion] = useState<string>('');
-  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
-  const [isAiAnswering, setIsAiAnswering] = useState<boolean>(false);
-
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
 
@@ -82,31 +72,6 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
 
   const ovenTempF = recipe.ovenTemperatureF || 350;
   const ovenTempC = convertFahrenheitToCelsius(ovenTempF).c;
-
-  // Ask AI Baker
-  const handleAskAssistant = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!aiQuestion.trim()) return;
-
-    setIsAiAnswering(true);
-    setAiAnswer(null);
-    try {
-      const res = await fetch('/api/ai/baking-assistant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question: aiQuestion.trim(),
-          recipeContext: `${recipe.title} (${recipe.category})`,
-        }),
-      });
-      const data = await res.json();
-      setAiAnswer(data.answer || 'Trust your baking intuition and watch for visual doneness!');
-    } catch (err) {
-      setAiAnswer('For best results, keep oven temperature steady and measure ingredients by weight when possible.');
-    } finally {
-      setIsAiAnswering(false);
-    }
-  };
 
   return (
     <div className="max-w-4xl mx-auto pb-16">
@@ -473,57 +438,6 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
             </div>
           )}
 
-          {/* AI Baking Assistant Box */}
-          <div className="pt-2 border-t border-[#EFE8DF] no-print">
-            <div className="bg-gradient-to-br from-[#FAF5EE] to-[#F7EFE5] p-5 rounded-2xl border border-[#E8DFD8]">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-[#C26343]/15 text-[#C26343]">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-[#2E2520]">Ask the Baking Assistant</h4>
-                    <p className="text-[11px] text-[#7A6A61]">Substitutions, oven troubleshooting, or texture questions</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowAiAssistant(!showAiAssistant)}
-                  className="text-xs font-bold text-[#C26343] hover:underline"
-                >
-                  {showAiAssistant ? 'Hide' : 'Ask Question'}
-                </button>
-              </div>
-
-              {showAiAssistant && (
-                <div className="space-y-3 pt-2">
-                  <form onSubmit={handleAskAssistant} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={aiQuestion}
-                      onChange={e => setAiQuestion(e.target.value)}
-                      placeholder="e.g. Can I use salted butter instead? What if my dough is sticky?"
-                      className="flex-1 px-3 py-2 rounded-xl border border-[#D9CFC7] bg-white text-xs text-[#2E2520] focus:ring-2 focus:ring-[#C26343]/30 focus:outline-hidden"
-                    />
-                    <button
-                      type="submit"
-                      disabled={isAiAnswering || !aiQuestion.trim()}
-                      className="px-4 py-2 rounded-xl bg-[#C26343] hover:bg-[#AE5638] text-white text-xs font-bold disabled:opacity-50 flex items-center gap-1.5 transition-colors shadow-xs"
-                    >
-                      {isAiAnswering ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                      Ask
-                    </button>
-                  </form>
-
-                  {aiAnswer && (
-                    <div className="p-3.5 rounded-xl bg-white border border-[#E5DDD4] text-xs text-[#332A24] space-y-1 shadow-xs animate-in fade-in">
-                      <span className="font-bold text-[#C26343] block">Chef's Advice:</span>
-                      <p className="leading-relaxed">{aiAnswer}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </div>
