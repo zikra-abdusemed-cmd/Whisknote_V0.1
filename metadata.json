@@ -1,0 +1,8 @@
+{
+  "name": "WhiskNote",
+  "description": "A cozy, modern recipe management and baking assistant app for home bakers with AI ingredient suggestions, unit conversions, and offline support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
