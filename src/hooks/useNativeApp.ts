@@ -19,7 +19,8 @@ export function useNativePlatformSetup(): void {
 
     const setup = async () => {
       try {
-        await StatusBar.setStyle({ style: Style.Dark });
+        // Style.Light = dark text, for the light cream background
+        await StatusBar.setStyle({ style: Style.Light });
         await StatusBar.setBackgroundColor({ color: '#FBF8F5' });
       } catch {
         // StatusBar may be unavailable on some platforms
