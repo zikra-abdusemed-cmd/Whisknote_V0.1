@@ -8,7 +8,9 @@ git push origin v1.0.1
 ```
 
 - **Android:** a signed `WhiskNote-1.0.1.apk` is attached to a new GitHub Release.
-- **iOS:** the build is uploaded to App Store Connect. After Apple's processing (about 10–30 minutes) it appears in TestFlight.
+- **iOS:** depends on whether the Apple secrets below are set:
+  - **Not set (free Apple ID):** an unsigned `WhiskNote-1.0.1-unsigned.ipa` is attached to the same GitHub Release, for sideloading. iPhone users follow [INSTALL_IPHONE.md](INSTALL_IPHONE.md).
+  - **Set (paid Apple Developer Program):** the build is uploaded to App Store Connect. After Apple's processing (about 10–30 minutes) it appears in TestFlight.
 
 Watch progress under the repo's **Actions** tab. You can also run the workflow by hand (**Actions → Release → Run workflow**). A manual run builds and uploads to TestFlight but doesn't create a GitHub Release.
 
@@ -37,7 +39,8 @@ Add these under **GitHub repo → Settings → Secrets and variables → Actions
 | `ANDROID_KEY_ALIAS` | `whisknote` |
 | `ANDROID_KEY_PASSWORD` | The key password (same as the keystore password if you pressed Enter) |
 
-### iOS (App Store Connect)
+### iOS (App Store Connect): only with the paid Apple Developer Program
+Skip this section with a free Apple ID: releases then include the unsigned `.ipa` for sideloading instead.
 1. Register the bundle ID and create the app record:
    - developer.apple.com → **Identifiers → +** → App IDs → `com.whisknote.app`
    - appstoreconnect.apple.com → **Apps → +** → New App, using that bundle ID.
@@ -57,7 +60,8 @@ Add these under **GitHub repo → Settings → Secrets and variables → Actions
 
 - **Android:** share the GitHub Release link. On the phone, download the `.apk`, open it, and allow "Install unknown apps" when asked.
   - Releases on a **private** repo are only visible to collaborators. For public downloads, make the repo public, or attach the APK somewhere public (e.g. Uptodown).
-- **iPhone:** App Store Connect → your app → **TestFlight**.
+- **iPhone, free:** share the GitHub Release link and [INSTALL_IPHONE.md](INSTALL_IPHONE.md). Each person installs the `.ipa` with Sideloadly, AltStore or SideStore using their own Apple ID, and refreshes it every 7 days.
+- **iPhone, paid account:** App Store Connect → your app → **TestFlight**.
   - Add testers by email, or create an **External Testing** group with a public link (up to 10,000 people). The first external build needs a short Beta App Review.
   - Testers install Apple's TestFlight app and open your link.
   - For the App Store itself, pick the build under **Distribution** and submit for review.
