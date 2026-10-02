@@ -1,5 +1,5 @@
 // WhiskNote Mobile PWA Service Worker
-const CACHE_NAME = 'whisknote-v2';
+const CACHE_NAME = 'whisknote-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
