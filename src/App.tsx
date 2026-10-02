@@ -385,12 +385,12 @@ function WhiskNoteMobileApp() {
 
       {/* Main Mobile App Container */}
       <div
-        className={`w-full bg-[#FBF8F5] flex flex-col overflow-hidden transition-all duration-300 relative ${
+        className={`w-full h-[calc(100dvh-env(safe-area-inset-top))] bg-[#FBF8F5] flex flex-col overflow-hidden transition-all duration-300 relative ${
           simulatorView === 'phone-frame'
             ? 'sm:max-w-[420px] sm:h-[840px] sm:max-h-[calc(100vh-3.5rem)] sm:rounded-[50px] sm:border-[11px] ' +
               phoneBorderColor +
               ' sm:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.15)]'
-            : 'max-w-md sm:max-w-lg min-h-screen shadow-md'
+            : 'max-w-md sm:max-w-lg shadow-md'
         }`}
       >
         {/* Hardware side button accents (Only visible in Phone Frame on Desktop) */}
@@ -403,21 +403,25 @@ function WhiskNoteMobileApp() {
           </>
         )}
 
-        {/* 1. Mobile Status Bar with Interactive Dynamic Island */}
-        <MobileStatusBar
-          showDynamicIsland={simulatorView === 'phone-frame' && !isNative}
-          isOnline={isOnline}
-          isTimerRunning={isTimerRunning}
-          timerCountdown={formatCountdown(remainingTimerSeconds)}
-          onTapDynamicIsland={() => {
-            setSelectedRecipeId(null);
-            setActiveTab('timer');
-          }}
-        />
+        {/* 1. Simulated status bar: desktop preview only (real phones have their own) */}
+        {!isNative && !isStandalone && (
+          <div className="hidden sm:block w-full shrink-0">
+            <MobileStatusBar
+              showDynamicIsland={simulatorView === 'phone-frame'}
+              isOnline={isOnline}
+              isTimerRunning={isTimerRunning}
+              timerCountdown={formatCountdown(remainingTimerSeconds)}
+              onTapDynamicIsland={() => {
+                setSelectedRecipeId(null);
+                setActiveTab('timer');
+              }}
+            />
+          </div>
+        )}
 
         {/* In-app Toast Banner */}
         {toastMessage && (
-          <div className="absolute top-11 left-3 right-3 z-50 animate-in slide-in-from-top-2 fade-in duration-200 pointer-events-none">
+          <div className="absolute top-3 sm:top-11 left-3 right-3 z-50 animate-in slide-in-from-top-2 fade-in duration-200 pointer-events-none">
             <div className="bg-[#2E2520]/95 text-white px-3.5 py-2 rounded-2xl shadow-lg backdrop-blur-md flex items-center justify-between text-xs font-semibold">
               <span className="flex items-center gap-1.5 truncate">
                 <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
