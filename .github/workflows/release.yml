@@ -96,11 +96,13 @@ jobs:
         run: rm -f "$RUNNER_TEMP/release.jks"
 
   ios:
-    name: iOS → TestFlight
+    name: iOS
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
-      # Skip quietly (instead of failing) until the Apple secrets have been added
+      # With Apple Developer Program secrets: signed build uploaded to TestFlight.
+      # Without them (free Apple ID): unsigned .ipa for Sideloadly / AltStore / SideStore,
+      # which re-sign it with the installer's own Apple ID.
       - name: Check Apple secrets
         id: apple
         env:
@@ -108,34 +110,30 @@ jobs:
           TEAM: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           if [ -n "$KEY" ] && [ -n "$TEAM" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Apple secrets found; building signed app for TestFlight."
           else
-            echo "::notice::Apple secrets not set yet; skipping iOS build. See RELEASING.md."
-            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No Apple secrets; building unsigned .ipa for sideloading."
           fi
 
       - uses: actions/checkout@v4
-        if: steps.apple.outputs.ready == 'true'
 
       - name: Use newest installed Xcode
-        if: steps.apple.outputs.ready == 'true'
         run: |
           XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
 
       - uses: actions/setup-node@v4
-        if: steps.apple.outputs.ready == 'true'
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
-        if: steps.apple.outputs.ready == 'true'
         run: npm ci
 
       - name: Build web app
-        if: steps.apple.outputs.ready == 'true'
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
@@ -144,16 +142,51 @@ jobs:
           npm run build:web
           npx cap sync ios
 
+      # ---------- Unsigned .ipa for sideloading (free) ----------
+      - name: Build unsigned app
+        if: steps.apple.outputs.signed != 'true'
+        run: |
+          xcodebuild archive \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/WhiskNote.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            MARKETING_VERSION="${VERSION_NAME#v}" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
+
+      - name: Package .ipa
+        if: steps.apple.outputs.signed != 'true'
+        run: |
+          APP="$RUNNER_TEMP/WhiskNote.xcarchive/Products/Applications/App.app"
+          test -d "$APP" || { echo "::error::App.app not found in archive"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$APP" "$RUNNER_TEMP/ipa/Payload/"
+          IPA="$GITHUB_WORKSPACE/WhiskNote-${VERSION_NAME#v}-unsigned.ipa"
+          (cd "$RUNNER_TEMP/ipa" && zip -qry "$IPA" Payload)
+          ls -la "$IPA"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" -c "Print :CFBundleShortVersionString" "$APP/Info.plist"
+          lipo -info "$APP/App"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.apple.outputs.signed != 'true'
+        with:
+          name: ios-ipa
+          path: WhiskNote-*-unsigned.ipa
+          if-no-files-found: error
+
+      # ---------- Signed build → TestFlight (paid Apple Developer Program) ----------
       - name: Restore App Store Connect API key
-        if: steps.apple.outputs.ready == 'true'
+        if: steps.apple.outputs.signed == 'true'
         env:
           APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
-        run: |
-          test -n "$APP_STORE_CONNECT_API_KEY_P8" || { echo "::error::Missing APP_STORE_CONNECT_API_KEY_P8 secret"; exit 1; }
-          echo "$APP_STORE_CONNECT_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+        run: echo "$APP_STORE_CONNECT_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
 
-      - name: Archive
-        if: steps.apple.outputs.ready == 'true'
+      - name: Archive (signed)
+        if: steps.apple.outputs.signed == 'true'
         env:
           ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
@@ -175,7 +208,7 @@ jobs:
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 
       - name: Export and upload to App Store Connect
-        if: steps.apple.outputs.ready == 'true'
+        if: steps.apple.outputs.signed == 'true'
         env:
           ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
@@ -197,22 +230,27 @@ jobs:
 
   github-release:
     name: Publish GitHub Release
-    needs: android
-    if: github.event_name == 'push'
+    needs: [android, ios]
+    # Publish the APK even if the iOS build fails; attach the .ipa when there is one
+    if: always() && github.event_name == 'push' && needs.android.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: android-apk
+          pattern: '*-*'
+          merge-multiple: true
 
-      - name: Create release with APK
+      - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" WhiskNote-*.apk \
+          ls -la
+          gh release create "$GITHUB_REF_NAME" WhiskNote-* \
             --repo "$GITHUB_REPOSITORY" \
             --title "WhiskNote $GITHUB_REF_NAME" \
             --generate-notes \
-            --notes "Android: download the .apk below on your phone and open it (allow \"Install unknown apps\" when asked). iPhone: install via the TestFlight invite link."
+            --notes "**Android:** download the \`.apk\` on your phone and open it (allow \"Install unknown apps\" when asked).
+
+          **iPhone:** download the \`-unsigned.ipa\` and install it with [Sideloadly](https://sideloadly.io), [AltStore](https://altstore.io) or [SideStore](https://sidestore.io) using your own Apple ID. With a free Apple ID the app must be refreshed every 7 days. Step-by-step: see INSTALL_IPHONE.md in the repo."
