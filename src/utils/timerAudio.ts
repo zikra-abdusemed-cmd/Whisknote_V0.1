@@ -1,4 +1,6 @@
 // Web Audio API harmonic chime tone for baking timer completion
+import { triggerHaptic as nativeHaptic, hapticWarning } from './haptics';
+
 export function playBakeChime() {
   try {
     const AudioContextClass =
@@ -32,11 +34,9 @@ export function playBakeChime() {
 }
 
 export function triggerHaptic(pattern: number | number[] = 15) {
-  if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-    try {
-      navigator.vibrate(pattern);
-    } catch {
-      // ignore
-    }
+  if (Array.isArray(pattern)) {
+    void hapticWarning();
+    return;
   }
+  void nativeHaptic(pattern);
 }

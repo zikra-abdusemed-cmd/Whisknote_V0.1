@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 
 // Extended BeforeInstallPromptEvent
 export interface BeforeInstallPromptEvent extends Event {
@@ -11,7 +12,10 @@ export interface BeforeInstallPromptEvent extends Event {
 }
 
 export function registerServiceWorker() {
-  if (typeof window !== 'undefined' && 'serviceWorker' in navigator && process.env.NODE_ENV !== 'test') {
+  // Native iOS/Android builds already bundle every asset locally; a service worker there
+  // would only risk serving stale code after an app update. Skip it in dev too (Vite HMR).
+  if (Capacitor.isNativePlatform() || import.meta.env.DEV) return;
+  if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('/sw.js')

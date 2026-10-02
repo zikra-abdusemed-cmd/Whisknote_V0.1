@@ -8,9 +8,9 @@ export const AuthScreen: React.FC = () => {
   const [isLoginMode, setIsLoginMode] = useState<boolean>(true);
 
   // Form states
-  const [name, setName] = useState<string>('Camille Laurent');
-  const [email, setEmail] = useState<string>('camille@homebaker.co');
-  const [password, setPassword] = useState<string>('baker123');
+  const [name, setName] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
   const [experience, setExperience] = useState<UserProfile['bakingExperience']>('Home Baker');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,7 +40,7 @@ export const AuthScreen: React.FC = () => {
 
           <div className="flex justify-center items-center gap-1.5 mt-3 text-[11px] font-semibold text-[#588157] bg-emerald-50 px-3 py-1 rounded-full w-fit mx-auto border border-emerald-200/60">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Secure local session & offline ready</span>
+            <span>Secure cloud account · offline-first sync</span>
           </div>
         </div>
 
@@ -96,6 +96,8 @@ export const AuthScreen: React.FC = () => {
                     type="text"
                     required
                     value={name}
+                    maxLength={100}
+                    autoComplete="name"
                     onChange={e => setName(e.target.value)}
                     placeholder="e.g. Camille Laurent"
                     className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#D9CFC7] bg-white text-xs font-medium text-[#2E2520] focus:ring-2 focus:ring-[#C26343]/30 focus:outline-hidden"
@@ -114,6 +116,10 @@ export const AuthScreen: React.FC = () => {
                   type="email"
                   required
                   value={email}
+                  maxLength={254}
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  inputMode="email"
                   onChange={e => setEmail(e.target.value)}
                   placeholder="camille@homebaker.co"
                   className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#D9CFC7] bg-white text-xs font-medium text-[#2E2520] focus:ring-2 focus:ring-[#C26343]/30 focus:outline-hidden"
@@ -131,6 +137,7 @@ export const AuthScreen: React.FC = () => {
                   type="password"
                   required
                   value={password}
+                  autoComplete={isLoginMode ? 'current-password' : 'new-password'}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#D9CFC7] bg-white text-xs font-medium text-[#2E2520] focus:ring-2 focus:ring-[#C26343]/30 focus:outline-hidden"

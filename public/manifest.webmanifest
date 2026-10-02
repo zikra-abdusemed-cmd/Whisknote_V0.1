@@ -1,6 +1,6 @@
 {
   "id": "/",
-  "name": "WhiskNote – Baking Notebook & Assistant",
+  "name": "WhiskNote \u2013 Baking Notebook & Assistant",
   "short_name": "WhiskNote",
   "description": "A cozy mobile recipe notebook, bake timer, and unit converter for home bakers.",
   "start_url": "/",
@@ -9,42 +9,59 @@
   "orientation": "portrait-primary",
   "background_color": "#FBF8F5",
   "theme_color": "#C26343",
-  "categories": ["food", "lifestyle", "utilities"],
+  "categories": [
+    "food",
+    "lifestyle",
+    "utilities"
+  ],
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
+      "src": "icons/icon-48.webp",
+      "type": "image/webp",
+      "sizes": "48x48",
       "purpose": "any"
     },
     {
-      "src": "/icon.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
+      "src": "icons/icon-72.webp",
+      "type": "image/webp",
+      "sizes": "72x72",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-96.webp",
+      "type": "image/webp",
+      "sizes": "96x96",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-128.webp",
+      "type": "image/webp",
+      "sizes": "128x128",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.webp",
+      "type": "image/webp",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-256.webp",
+      "type": "image/webp",
+      "sizes": "256x256",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.webp",
+      "type": "image/webp",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.webp",
+      "type": "image/webp",
+      "sizes": "512x512",
       "purpose": "maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "New Recipe",
-      "short_name": "Add Recipe",
-      "description": "Quickly create a new baking recipe",
-      "url": "/?action=new",
-      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
-    },
-    {
-      "name": "Kitchen Timer",
-      "short_name": "Bake Timer",
-      "description": "Start an oven bake timer",
-      "url": "/?action=timer",
-      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
-    },
-    {
-      "name": "Unit Converter",
-      "short_name": "Converter",
-      "description": "Baking cups to grams converter",
-      "url": "/?action=converter",
-      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
     }
   ]
 }

@@ -13,6 +13,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { Recipe, RecipeCategory, Ingredient, InstructionStep, RecipeDifficulty } from '../types';
+import { fileToCompressedDataUrl } from '../utils/image';
 
 interface RecipeFormModalProps {
   recipeToEdit?: Recipe | null;
@@ -95,13 +96,13 @@ export const RecipeFormModal: React.FC<RecipeFormModalProps> = ({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setImageUrl(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    fileToCompressedDataUrl(file)
+      .then(dataUrl => {
+        setFormError(null);
+        setImageUrl(dataUrl);
+      })
+      .catch(() => setFormError('Could not read that image. Please try a JPG or PNG.'));
+    e.target.value = '';
   };
 
   // Ingredients operations

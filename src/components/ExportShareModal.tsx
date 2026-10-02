@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { X, Printer, Copy, Check, Share2, Download, Sparkles } from 'lucide-react';
 import { Recipe } from '../types';
+import { Capacitor } from '@capacitor/core';
+import { saveTextFile, shareText } from '../utils/fileExport';
 
 interface ExportShareModalProps {
   recipe: Recipe;
@@ -12,6 +14,8 @@ export const ExportShareModal: React.FC<ExportShareModalProps> = ({ recipe, isOp
   const [copied, setCopied] = useState<boolean>(false);
 
   if (!isOpen) return null;
+
+  const isNative = Capacitor.isNativePlatform();
 
   // Format shareable plain text
   const shareableText = `🧁 ${recipe.title} (WhiskNote)
@@ -39,18 +43,24 @@ ${recipe.bakersNotes ? `BAKER'S NOTES:\n${recipe.bakersNotes}\n\n` : ''}Baked wi
     }
   };
 
+  // The in-app webviews can't print, so on phones this opens the native share sheet instead
   const handlePrint = () => {
-    window.print();
+    if (!isNative) {
+      window.print();
+      return;
+    }
+    shareText(recipe.title, shareableText).catch(err => {
+      console.warn('Share cancelled or failed', err);
+    });
   };
 
   const handleDownloadJSON = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(recipe, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `${recipe.title.toLowerCase().replace(/\s+/g, '-')}-whisknote.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    saveTextFile(
+      `${recipe.title.toLowerCase().replace(/\s+/g, '-')}-whisknote.json`,
+      JSON.stringify(recipe, null, 2)
+    ).catch(err => {
+      console.warn('Recipe export cancelled or failed', err);
+    });
   };
 
   return (
@@ -87,10 +97,12 @@ ${recipe.bakersNotes ? `BAKER'S NOTES:\n${recipe.bakersNotes}\n\n` : ''}Baked wi
               className="flex flex-col items-center justify-center p-4 rounded-xl border border-[#E5DDD4] bg-white hover:bg-[#FAF6F0] hover:border-[#C26343] transition-all group"
             >
               <div className="p-2.5 rounded-full bg-[#FAF5EE] text-[#C26343] mb-2 group-hover:scale-110 transition-transform">
-                <Printer className="w-5 h-5" />
+                {isNative ? <Share2 className="w-5 h-5" /> : <Printer className="w-5 h-5" />}
               </div>
-              <span className="text-sm font-bold text-[#2E2520]">Print Recipe Card</span>
-              <span className="text-xs text-[#8C7A70] text-center mt-0.5">Kitchen-friendly printable PDF</span>
+              <span className="text-sm font-bold text-[#2E2520]">{isNative ? 'Share Recipe' : 'Print Recipe Card'}</span>
+              <span className="text-xs text-[#8C7A70] text-center mt-0.5">
+                {isNative ? 'Messages, email, notes & more' : 'Kitchen-friendly printable PDF'}
+              </span>
             </button>
 
             <button

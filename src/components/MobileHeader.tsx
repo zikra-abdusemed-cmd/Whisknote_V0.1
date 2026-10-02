@@ -19,7 +19,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   const [isSearchExpanded, setIsSearchExpanded] = useState<boolean>(false);
 
   return (
-    <header className="sticky top-0 z-30 bg-[#FFFDF9]/95 backdrop-blur-md border-b border-[#E8DFD8] no-print">
+    <header className="sticky top-0 z-30 bg-[#FFFDF9]/95 backdrop-blur-md border-b border-[#E8DFD8] pt-safe no-print">
       <div className="px-4 py-2.5 flex items-center justify-between gap-2 max-w-md mx-auto">
         {/* Brand */}
         <div className="flex items-center gap-2">

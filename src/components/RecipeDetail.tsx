@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Recipe } from '../types';
 import { scaleIngredientAmount, convertFahrenheitToCelsius } from '../utils/conversions';
+import { triggerHaptic, hapticSuccess } from '../utils/haptics';
 
 interface RecipeDetailProps {
   recipe: Recipe;
@@ -59,14 +60,20 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
   const toggleIngredientCheck = (id: string) => {
     const next = new Set(checkedIngredients);
     if (next.has(id)) next.delete(id);
-    else next.add(id);
+    else {
+      next.add(id);
+      void triggerHaptic(8);
+    }
     setCheckedIngredients(next);
   };
 
   const toggleStepCheck = (id: string) => {
     const next = new Set(completedSteps);
     if (next.has(id)) next.delete(id);
-    else next.add(id);
+    else {
+      next.add(id);
+      void hapticSuccess();
+    }
     setCompletedSteps(next);
   };
 
@@ -86,7 +93,10 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => onToggleFavorite(recipe.id)}
+            onClick={() => {
+              void triggerHaptic(12);
+              onToggleFavorite(recipe.id);
+            }}
             title="Toggle Favorite"
             className={`p-2 rounded-xl border transition-colors ${
               recipe.isFavorite

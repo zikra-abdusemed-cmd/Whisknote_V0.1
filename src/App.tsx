@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Smartphone,
@@ -12,8 +12,9 @@ import {
   Bell,
   Check,
 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { StorageService } from './services/storageService';
+import { StorageService, RECIPES_CHANGED_EVENT } from './services/storageService';
 import { Recipe } from './types';
 import { AuthScreen } from './components/AuthScreen';
 import { MobileStatusBar } from './components/MobileStatusBar';
@@ -29,10 +30,15 @@ import { UnitConverterModal } from './components/UnitConverterModal';
 import { ExportShareModal } from './components/ExportShareModal';
 import { usePwaInstall } from './utils/pwa';
 import { playBakeChime, triggerHaptic } from './utils/timerAudio';
+import { cancelTimerNotification, scheduleTimerNotification } from './utils/timerNotifications';
+import { useAndroidBackButton, useNativePlatformSetup } from './hooks/useNativeApp';
 
 function WhiskNoteMobileApp() {
   const { isAuthenticated, isLoading } = useAuth();
   const { isStandalone } = usePwaInstall();
+  const isNative = Capacitor.isNativePlatform();
+
+  useNativePlatformSetup();
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
@@ -61,47 +67,104 @@ function WhiskNoteMobileApp() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Desktop Simulator presentation: 'phone-frame' (iPhone chassis) or 'fluid-mobile' (edge-to-edge mobile app)
-  const [simulatorView, setSimulatorView] = useState<'phone-frame' | 'fluid-mobile'>('phone-frame');
+  const [simulatorView, setSimulatorView] = useState<'phone-frame' | 'fluid-mobile'>(
+    isNative ? 'fluid-mobile' : 'phone-frame'
+  );
   const [phoneFinish, setPhoneFinish] = useState<'titanium-dark' | 'titanium-natural' | 'titanium-desert'>('titanium-dark');
 
-  // Load recipes on mount and handle network state
-  useEffect(() => {
-    refreshRecipes();
+  const handleNativeBack = useCallback((): boolean => {
+    if (isFormOpen) {
+      setIsFormOpen(false);
+      setRecipeToEdit(null);
+      return true;
+    }
+    if (isConverterOpen) {
+      setIsConverterOpen(false);
+      return true;
+    }
+    if (isShareOpen) {
+      setIsShareOpen(false);
+      setRecipeToShare(null);
+      return true;
+    }
+    if (selectedRecipeId) {
+      setSelectedRecipeId(null);
+      return true;
+    }
+    if (activeTab !== 'recipes') {
+      setActiveTab('recipes');
+      return true;
+    }
+    return false;
+  }, [isFormOpen, isConverterOpen, isShareOpen, selectedRecipeId, activeTab]);
 
-    const handleOnline = () => setIsOnline(true);
+  useAndroidBackButton({ onBack: handleNativeBack });
+
+  // Load recipes on mount, keep in sync with background cloud syncs, and handle network state
+  useEffect(() => {
+    void StorageService.hydrateFromIndexedDb().then(() => refreshRecipes());
+
+    const handleRecipesChanged = () => refreshRecipes();
+    const handleOnline = () => {
+      setIsOnline(true);
+      void StorageService.syncWithCloud();
+    };
     const handleOffline = () => setIsOnline(false);
 
+    window.addEventListener(RECIPES_CHANGED_EVENT, handleRecipesChanged);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
     return () => {
+      window.removeEventListener(RECIPES_CHANGED_EVENT, handleRecipesChanged);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
-  // Centralized Timer Countdown Interval
+  // Centralized timer countdown. Tracks a wall-clock end time so the countdown stays
+  // correct when the phone is locked or the app is backgrounded (JS timers pause there).
+  const [timerEndAt, setTimerEndAt] = useState<number | null>(null);
+
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isTimerRunning && remainingTimerSeconds > 0) {
-      interval = setInterval(() => {
-        setRemainingTimerSeconds(prev => {
-          if (prev <= 1) {
-            setIsTimerRunning(false);
-            setIsTimerFinished(true);
-            playBakeChime();
-            triggerHaptic([300, 150, 300, 150, 400]);
-            showToast('Ding! Your bake is ready in the oven.');
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (!isTimerRunning) {
+      setTimerEndAt(null);
+      return;
     }
-    return () => {
-      if (interval) clearInterval(interval);
+    if (timerEndAt === null) {
+      setTimerEndAt(Date.now() + remainingTimerSeconds * 1000);
+      return;
+    }
+
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((timerEndAt - Date.now()) / 1000));
+      setRemainingTimerSeconds(left);
+      if (left === 0) {
+        setIsTimerRunning(false);
+        setIsTimerFinished(true);
+        playBakeChime();
+        triggerHaptic([300, 150, 300, 150, 400]);
+        showToast('Ding! Your bake is ready in the oven.');
+      }
     };
-  }, [isTimerRunning, remainingTimerSeconds]);
+
+    tick();
+    const interval = setInterval(tick, 250);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [isTimerRunning, timerEndAt]);
+
+  // System notification so the alarm still arrives when the app is closed or the phone is locked
+  useEffect(() => {
+    if (isTimerRunning && timerEndAt !== null) {
+      void scheduleTimerNotification(timerEndAt, timerLabel);
+    } else {
+      void cancelTimerNotification();
+    }
+  }, [isTimerRunning, timerEndAt, timerLabel]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -162,6 +225,7 @@ function WhiskNoteMobileApp() {
   // Timer controls
   const handleOpenTimer = (seconds = 600, label = 'Bake Timer', switchToTab = true) => {
     triggerHaptic(12);
+    setTimerEndAt(Date.now() + seconds * 1000);
     setTotalTimerSeconds(seconds);
     setRemainingTimerSeconds(seconds);
     setTimerLabel(label);
@@ -202,6 +266,10 @@ function WhiskNoteMobileApp() {
   };
 
   const handleAddTimerSeconds = (secondsToAdd: number) => {
+    if (timerEndAt !== null) {
+      const left = Math.max(0, (timerEndAt - Date.now()) / 1000);
+      setTimerEndAt(Date.now() + Math.max(10, left + secondsToAdd) * 1000);
+    }
     setRemainingTimerSeconds(prev => Math.max(10, prev + secondsToAdd));
     setTotalTimerSeconds(prev => Math.max(10, prev + secondsToAdd));
   };
@@ -253,12 +321,12 @@ function WhiskNoteMobileApp() {
 
   return (
     <div
-      className={`min-h-screen bg-[#EFE9E2] text-[#2E2724] flex flex-col items-center justify-center ${
-        simulatorView === 'phone-frame' ? 'sm:py-4 sm:px-4' : 'p-0 bg-[#FBF8F5]'
+      className={`min-h-screen bg-[#EFE9E2] text-[#2E2724] flex flex-col items-center justify-center pt-safe ${
+        simulatorView === 'phone-frame' && !isNative ? 'sm:py-4 sm:px-4' : 'p-0 bg-[#FBF8F5]'
       }`}
     >
-      {/* Desktop Mobile Simulator Top Bar (hidden on mobile devices or in standalone PWA) */}
-      {!isStandalone && (
+      {/* Desktop Mobile Simulator Top Bar (hidden on mobile devices, standalone PWA, or native) */}
+      {!isStandalone && !isNative && (
         <div className="hidden sm:flex items-center justify-between w-full max-w-md mb-2.5 px-3 py-1.5 rounded-2xl bg-white/85 backdrop-blur-md border border-[#D9CFC7] shadow-xs text-xs text-[#6E5C53] no-print">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#C26343] animate-pulse" />
@@ -337,7 +405,7 @@ function WhiskNoteMobileApp() {
 
         {/* 1. Mobile Status Bar with Interactive Dynamic Island */}
         <MobileStatusBar
-          showDynamicIsland={simulatorView === 'phone-frame'}
+          showDynamicIsland={simulatorView === 'phone-frame' && !isNative}
           isOnline={isOnline}
           isTimerRunning={isTimerRunning}
           timerCountdown={formatCountdown(remainingTimerSeconds)}
@@ -540,7 +608,7 @@ function WhiskNoteMobileApp() {
         />
 
         {/* Mobile Home Bar Indicator (Phone Chassis bottom bar) */}
-        {simulatorView === 'phone-frame' && (
+        {simulatorView === 'phone-frame' && !isNative && (
           <div className="w-32 h-1 bg-[#2E2520]/60 rounded-full mx-auto mb-1 shrink-0 z-40 pointer-events-none no-print" />
         )}
 

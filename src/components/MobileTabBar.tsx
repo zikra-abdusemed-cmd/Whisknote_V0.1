@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChefHat, Heart, Plus, Scale, User } from 'lucide-react';
+import { triggerHaptic } from '../utils/haptics';
 
 export type MobileTab = 'recipes' | 'favorites' | 'timer' | 'tools' | 'kitchen';
 
@@ -20,18 +21,8 @@ export const MobileTabBar: React.FC<MobileTabBarProps> = ({
   favoriteCount,
   isTimerRunning = false,
 }) => {
-  const triggerHaptic = () => {
-    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-      try {
-        navigator.vibrate(10);
-      } catch {
-        // ignore
-      }
-    }
-  };
-
   const handleTabClick = (tab: MobileTab) => {
-    triggerHaptic();
+    void triggerHaptic(10);
     onSelectTab(tab);
   };
 
